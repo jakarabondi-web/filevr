@@ -21,7 +21,11 @@ export function AppRail({ user }: { user: SessionUser | null }) {
 
         <nav className="flex w-full flex-col items-center gap-7" aria-label="Sections">
           <Link href="/" className={`${NAV_ITEM_CLASS} text-lime`}>
-            <Home aria-hidden="true" className="size-5" strokeWidth={1.75} />
+            <Home
+              aria-hidden="true"
+              className="size-5 drop-shadow-[0_0_7px_rgba(214,248,58,0.55)]"
+              strokeWidth={1.75}
+            />
             Home
           </Link>
           {user ? (

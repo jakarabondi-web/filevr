@@ -23,7 +23,7 @@ export default async function HomePage() {
       <main id="main" className="flex min-w-0 flex-1 flex-col bg-paper">
         <MobileNav user={user} />
 
-        <div className="flex flex-1 flex-col xl:flex-row">
+        <div className="paper-grain flex flex-1 flex-col xl:flex-row">
           <div className="min-w-0 flex-1">
             <UtilityBar user={user} />
             <EditorialStatement />

@@ -1,15 +1,18 @@
 export function EditorialStatement() {
   return (
     <div className="px-4 pt-8 sm:px-8 sm:pt-10 md:px-10 md:pt-12">
-      <h1 className="max-w-2xl text-[44px] font-black uppercase leading-[0.95] tracking-tight text-ink sm:text-[60px] lg:text-[80px] lg:leading-[76px]">
+      <h1 className="font-display rise-in max-w-3xl text-[46px] uppercase leading-[0.94] tracking-[-0.01em] text-ink sm:text-[64px] lg:text-[88px] lg:leading-[0.92]">
         Files in.
         <br />
         Finished
         <br />
         work out.
       </h1>
-      <div className="mt-4 flex items-start gap-3 sm:mt-6">
-        <p className="max-w-xs text-base text-ink/80 sm:text-lg">One workspace for every document job.</p>
+      <div
+        className="rise-in mt-5 flex items-start gap-3 sm:mt-7"
+        style={{ animationDelay: "0.08s" }}
+      >
+        <p className="max-w-xs text-base text-ink-soft sm:text-lg">One workspace for every document job.</p>
         <svg
           aria-hidden="true"
           width="72"

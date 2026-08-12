@@ -7,9 +7,9 @@
   --text: #16181d;
   --muted: #667085;
   --border: #e4e7ec;
-  --primary: #5b5ce2;
-  --primary-hover: #4949c9;
-  --primary-soft: #f0efff;
+  --primary: #4f46e5;
+  --primary-hover: #3f37c9;
+  --primary-soft: #eeecfd;
   --success: #079455;
   --success-soft: #ecfdf3;
   --warning: #dc6803;
@@ -21,14 +21,18 @@
   --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 6px 18px rgba(16, 24, 40, 0.06);
 
   /* Homepage editorial-workbench palette */
-  --paper: #f2edde;
-  --paper-texture: #eae4d2;
-  --ink: #14151a;
-  --ink-soft: #1f2027;
-  --lime: #d4f34f;
-  --lime-ink: #14151a;
-  --drag-border: #5b5ce2;
-  --drag-bg: #f5f3ff;
+  --paper: #f1ead8;
+  --paper-deep: #e6dcc2;
+  --paper-texture: #e2d6b8;
+  --ink: #121014;
+  --ink-soft: #33303a;
+  --lime: #d6f83a;
+  --lime-deep: #b8db1e;
+  --lime-ink: #16210a;
+  --coral: #ff5a45;
+  --coral-soft: #ffe4de;
+  --drag-border: #4f46e5;
+  --drag-bg: #f2f1fd;
 
   --background: var(--bg);
   --foreground: var(--text);
@@ -50,23 +54,57 @@
   --color-focus: var(--focus);
 
   --color-paper: var(--paper);
+  --color-paper-deep: var(--paper-deep);
   --color-paper-texture: var(--paper-texture);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-lime: var(--lime);
+  --color-lime-deep: var(--lime-deep);
   --color-lime-ink: var(--lime-ink);
+  --color-coral: var(--coral);
+  --color-coral-soft: var(--coral-soft);
   --color-drag-border: var(--drag-border);
   --color-drag-bg: var(--drag-bg);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
+  --font-display: var(--font-display);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Paper grain — a single tiled SVG noise data-uri, blended directly into the
+   element's own background layer (not a separate overlay) so it can never
+   interact with sibling stacking contexts. Kept subtle so it never touches
+   text contrast (spec 5.1: "must not reduce text contrast"). */
+.paper-grain {
+  background-color: var(--paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.06 0 0 0 0 0.05 0 0 0 0 0.02 0 0 0 0.12 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  background-blend-mode: multiply;
+}
+
+.font-display {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.rise-in {
+  animation: rise-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {

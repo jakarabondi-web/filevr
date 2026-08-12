@@ -61,14 +61,15 @@ export function DocumentWorkbench() {
     <div className="px-4 pb-10 sm:px-8 md:px-10">
       <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-[auto_1fr_auto] lg:gap-2">
         <div className="hidden lg:flex h-[420px] flex-col justify-between py-6">
-          {LEFT_CHIPS.map((tool) => (
-            <ActionChip
-              key={tool.slug}
-              tool={tool}
-              side="left"
-              recommended={hasFiles && recommended.some((r) => r.slug === tool.slug)}
-              onSelect={openPicker}
-            />
+          {LEFT_CHIPS.map((tool, i) => (
+            <div key={tool.slug} className="rise-in" style={{ animationDelay: `${0.22 + i * 0.06}s` }}>
+              <ActionChip
+                tool={tool}
+                side="left"
+                recommended={hasFiles && recommended.some((r) => r.slug === tool.slug)}
+                onSelect={openPicker}
+              />
+            </div>
           ))}
         </div>
 
@@ -84,9 +85,19 @@ export function DocumentWorkbench() {
             isDragging && "bg-drag-bg outline-2 outline-dashed outline-drag-border"
           )}
         >
-          <div className="relative flex items-center justify-center">
+          <div className="rise-in relative flex items-center justify-center" style={{ animationDelay: "0.16s" }}>
             <DocumentStack />
-            <label className="absolute flex size-36 sm:size-40 lg:size-[172px] cursor-pointer flex-col items-center justify-center gap-1 rounded-full bg-lime text-center text-lime-ink shadow-[0_8px_0_rgba(0,0,0,0.15)] transition-transform hover:scale-[1.03] focus-within:ring-4 focus-within:ring-primary/40">
+            <label
+              className="absolute top-[54%] flex size-36 sm:size-40 lg:size-[176px] -translate-y-1/2 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-full bg-lime text-center text-lime-ink transition-transform duration-150 hover:-translate-y-[calc(50%+3px)] active:translate-y-[calc(-50%+3px)] focus-within:ring-4 focus-within:ring-primary/40"
+              style={{
+                boxShadow:
+                  "0 0 0 4px var(--paper), 0 0 0 5px rgba(18,16,20,0.14), 0 10px 0 -2px var(--lime-deep), 0 18px 26px -8px rgba(18,16,20,0.4)",
+              }}
+            >
+              <span
+                className="pointer-events-none absolute inset-[9px] rounded-full border border-dashed border-lime-ink/35"
+                aria-hidden="true"
+              />
               <input
                 ref={inputRef}
                 type="file"
@@ -99,10 +110,10 @@ export function DocumentWorkbench() {
                 }}
               />
               <Upload aria-hidden="true" className="size-6 sm:size-7" strokeWidth={2.5} />
-              <span className="text-base font-black leading-tight sm:text-lg">
+              <span className="font-display text-lg leading-[0.95] tracking-tight sm:text-xl">
                 {hasFiles ? `${files.length} FILE${files.length > 1 ? "S" : ""}` : "DROP"}
               </span>
-              {!hasFiles && <span className="text-base font-black leading-tight sm:text-lg">FILES</span>}
+              {!hasFiles && <span className="font-display text-lg leading-[0.95] tracking-tight sm:text-xl">FILES</span>}
               {selectedTool && hasFiles && (
                 <span className="text-[10px] font-semibold">{selectedTool.shortName} next</span>
               )}
@@ -122,14 +133,15 @@ export function DocumentWorkbench() {
         </div>
 
         <div className="hidden lg:flex h-[420px] flex-col justify-between py-6">
-          {RIGHT_CHIPS.map((tool) => (
-            <ActionChip
-              key={tool.slug}
-              tool={tool}
-              side="right"
-              recommended={hasFiles && recommended.some((r) => r.slug === tool.slug)}
-              onSelect={openPicker}
-            />
+          {RIGHT_CHIPS.map((tool, i) => (
+            <div key={tool.slug} className="rise-in" style={{ animationDelay: `${0.22 + i * 0.06}s` }}>
+              <ActionChip
+                tool={tool}
+                side="right"
+                recommended={hasFiles && recommended.some((r) => r.slug === tool.slug)}
+                onSelect={openPicker}
+              />
+            </div>
           ))}
         </div>
 
@@ -143,7 +155,7 @@ export function DocumentWorkbench() {
                 "inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold shadow-[var(--shadow-card)] focus-ring",
                 tool.accent === "lime" && "bg-lime text-lime-ink",
                 tool.accent === "indigo" && "bg-primary text-white",
-                tool.accent === "coral" && "bg-[#ff5a4e] text-white",
+                tool.accent === "coral" && "bg-coral text-white",
                 hasFiles && recommended.some((r) => r.slug === tool.slug) && "ring-2 ring-ink ring-offset-2 ring-offset-paper"
               )}
             >
