@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronRight, FileText, MoreHorizontal, X } from "lucide-react";
+import { ChevronRight, MoreHorizontal, X } from "lucide-react";
 import { StatusDot } from "@/components/ui/status-badge";
+import { FileTypeIcon } from "@/components/files/file-type-icon";
 import type { JobStatus } from "@/types";
 import type { SessionUser } from "@/lib/auth";
 
@@ -47,7 +48,7 @@ export function ContinueRibbon({ user }: { user: SessionUser | null }) {
             className="group flex min-w-[220px] flex-1 items-center gap-2.5 rounded-xl border border-black/10 bg-white px-3.5 py-2.5 shadow-[var(--shadow-card)]"
           >
             <Link href={`/task/compress-pdf/${item.id}`} className="flex min-w-0 flex-1 items-center gap-2.5 focus-ring rounded-md">
-              <FileText aria-hidden="true" className="size-4 shrink-0 text-muted" />
+              <FileTypeIcon name={item.name} />
               <span className="truncate text-sm font-medium text-ink">{item.name}</span>
               <StatusDot status={item.status} className="ml-1 shrink-0" />
             </Link>

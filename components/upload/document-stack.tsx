@@ -15,6 +15,15 @@ export function DocumentStack() {
             <div key={i} className="h-1 rounded bg-border" style={{ width: `${90 - i * 12}%` }} />
           ))}
         </div>
+        <p className="mt-3 text-[7px] font-semibold uppercase text-muted sm:text-[8px]">Scope</p>
+        <div className="mt-1 space-y-1">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-1">
+              <span className="size-[3px] shrink-0 rounded-full bg-muted" />
+              <span className="h-1 rounded bg-border" style={{ width: `${70 - i * 9}%` }} />
+            </div>
+          ))}
+        </div>
         <p className="mt-3 text-[7px] font-semibold uppercase text-muted sm:text-[8px]">Timeline</p>
         <div className="mt-1 flex h-10 items-end gap-1 sm:h-14">
           {[40, 65, 50, 80, 55].map((h, i) => (
@@ -27,22 +36,45 @@ export function DocumentStack() {
         className="absolute right-0 top-0 w-[220px] rotate-[7deg] rounded-xl border border-black/10 bg-white p-4 shadow-[var(--shadow-card)] sm:w-[250px] sm:p-5 lg:w-[280px]"
         style={{ boxShadow: "0 2px 4px rgba(18,16,20,0.08), 0 20px 32px -14px rgba(18,16,20,0.32)" }}
       >
-        <p className="text-[10px] font-bold tracking-wide text-ink sm:text-xs">INVOICE</p>
-        <p className="mt-1 text-[6px] text-muted sm:text-[7px]">INV-2026-0487</p>
+        <div className="flex items-start justify-between">
+          <p className="text-[10px] font-bold tracking-wide text-ink sm:text-xs">INVOICE</p>
+          <p className="text-right text-[6px] leading-tight text-muted sm:text-[7px]">
+            #INV-2026-0487
+            <br />
+            Due Jun 7
+          </p>
+        </div>
         <div className="mt-3 space-y-1.5">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="flex justify-between text-[6px] text-muted sm:text-[7px]">
-              <span className="h-1 w-14 rounded bg-border" />
-              <span className="h-1 w-6 rounded bg-border" />
+          {[
+            ["Consulting services", "$2,500.00"],
+            ["Design work", "$1,200.00"],
+            ["Revisions", "$300.00"],
+          ].map(([label, amount], i) => (
+            <div key={i} className="flex items-center justify-between gap-2 text-[6px] text-muted sm:text-[7px]">
+              <span className="truncate">{label}</span>
+              <span className="shrink-0 font-medium text-ink-soft">{amount}</span>
             </div>
           ))}
         </div>
-        <div className="mt-4 flex items-center justify-between border-t border-border pt-2">
-          <span className="text-[7px] font-semibold text-ink sm:text-[8px]">Total</span>
-          <span className="text-[7px] font-semibold text-ink sm:text-[8px]">$4,340.00</span>
+        <div className="mt-2 space-y-1 border-t border-border pt-2">
+          <div className="flex items-center justify-between text-[6px] text-muted sm:text-[7px]">
+            <span>Subtotal</span>
+            <span>$4,000.00</span>
+          </div>
+          <div className="flex items-center justify-between text-[6px] text-muted sm:text-[7px]">
+            <span>Tax (8.5%)</span>
+            <span>$340.00</span>
+          </div>
+          <div className="flex items-center justify-between text-[7px] font-semibold text-ink sm:text-[8px]">
+            <span>Total</span>
+            <span>$4,340.00</span>
+          </div>
         </div>
-        <div className="mt-2 flex justify-end">
-          <span className="rounded-full border border-coral px-2 py-0.5 text-[6px] font-bold uppercase tracking-wide text-coral sm:text-[7px]">
+        <div className="relative mt-2 flex h-8 justify-end">
+          <span
+            className="flex size-8 -rotate-12 items-center justify-center rounded-full border-[1.5px] border-coral text-center text-[5px] font-black uppercase leading-[1.1] tracking-wide text-coral"
+            style={{ boxShadow: "inset 0 0 0 1.5px rgba(255,90,69,0.25)" }}
+          >
             Paid
           </span>
         </div>
@@ -61,12 +93,23 @@ export function DocumentStack() {
         <p className="mt-2 text-[7px] leading-relaxed text-muted sm:text-[8px]">
           This agreement is made between the parties listed below.
         </p>
-        <div className="mt-3 space-y-1">
-          {[0, 1].map((i) => (
-            <div key={i} className="h-1 rounded bg-border" style={{ width: `${85 - i * 15}%` }} />
-          ))}
+        <div className="mt-2.5 grid grid-cols-2 gap-2">
+          <div>
+            <p className="text-[6px] font-semibold uppercase text-muted sm:text-[6.5px]">Party A</p>
+            <div className="mt-1 space-y-1">
+              <div className="h-1 rounded bg-border" style={{ width: "80%" }} />
+              <div className="h-1 rounded bg-border" style={{ width: "60%" }} />
+            </div>
+          </div>
+          <div>
+            <p className="text-[6px] font-semibold uppercase text-muted sm:text-[6.5px]">Party B</p>
+            <div className="mt-1 space-y-1">
+              <div className="h-1 rounded bg-border" style={{ width: "75%" }} />
+              <div className="h-1 rounded bg-border" style={{ width: "55%" }} />
+            </div>
+          </div>
         </div>
-        <div className="mt-7 flex items-end justify-between sm:mt-9">
+        <div className="mt-6 flex items-end justify-between sm:mt-8">
           <svg width="56" height="22" viewBox="0 0 56 22" className="text-primary">
             <path
               d="M2 17C9 4 13 19 20 8C24 2 28 17 34 10C38 5 42 15 54 6"

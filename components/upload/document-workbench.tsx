@@ -11,8 +11,10 @@ import { DocumentStack } from "@/components/upload/document-stack";
 import { FileRow } from "@/components/upload/file-row";
 import { track } from "@/lib/analytics";
 
-const LEFT_CHIPS = TOOLS.filter((t) => ["pdf-to-word", "compress-pdf", "sign-pdf"].includes(t.slug));
-const RIGHT_CHIPS = TOOLS.filter((t) => ["edit-pdf", "ocr-pdf", "merge-pdf"].includes(t.slug));
+const LEFT_ORDER = ["pdf-to-word", "compress-pdf", "sign-pdf"];
+const RIGHT_ORDER = ["edit-pdf", "ocr-pdf", "merge-pdf"];
+const LEFT_CHIPS = LEFT_ORDER.map((slug) => TOOLS.find((t) => t.slug === slug)!);
+const RIGHT_CHIPS = RIGHT_ORDER.map((slug) => TOOLS.find((t) => t.slug === slug)!);
 
 const SUPPORTED_FORMATS = "PDF, Word, Excel, PowerPoint, JPG, PNG, HEIC, TXT";
 
