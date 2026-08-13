@@ -20,19 +20,40 @@
   --radius-lg: 16px;
   --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 6px 18px rgba(16, 24, 40, 0.06);
 
-  /* Homepage editorial-workbench palette — "Acid Paper" (default theme) */
-  --paper: #f3eee3;
+  /* Filevr editorial workbench palette (approved reference) */
+  --ink: #101713;
+  --ink-soft: #26302a;
+  --paper: #f2eddf;
+  --paper-light: #faf7ef;
+  --paper-line: #d4ccbc;
+  --acid: #c8ff3d;
+  --acid-hover: #b5ec25;
+  --cobalt: #3157ff;
+  --cobalt-hover: #2447e8;
+  --coral: #ff604d;
+  --coral-hover: #eb4d3c;
+  --muted: #686b66;
+  --sidebar-width: 180px;
+  --privacy-width: 72px;
+  --radius-pill: 999px;
+  --radius-control: 18px;
+  --shadow-paper: 0 12px 24px rgba(16, 23, 19, 0.15), 0 2px 5px rgba(16, 23, 19, 0.1);
+  --focus-ring: 0 0 0 3px rgba(49, 87, 255, 0.35);
+
+  /* Design-pixel unit. The desktop composition overrides this with a value
+     derived from its own size; the 1px fallback keeps every calc() using it
+     valid in the non-scaled (below-1280px) layouts. */
+  --u: 1px;
+
+  /* Aliases kept so existing routes (tools, workspace, task) stay on-palette. */
   --paper-deep: #e9e2d2;
-  --paper-texture: #ded5c0;
-  --ink: #121014;
-  --ink-soft: #33303a;
-  --lime: #d6f83a;
-  --lime-deep: #b8db1e;
-  --lime-ink: #16210a;
-  --coral: #ff5a45;
-  --coral-soft: #ffe4de;
-  --drag-border: #4f46e5;
-  --drag-bg: #f2f1fd;
+  --paper-texture: var(--paper-line);
+  --lime: var(--acid);
+  --lime-deep: var(--acid-hover);
+  --lime-ink: var(--ink);
+  --coral-soft: #ffe0da;
+  --drag-border: var(--cobalt);
+  --drag-bg: #eaefff;
   --font-display: var(--font-display-acid);
 
   --background: var(--bg);
@@ -97,10 +118,17 @@
   --color-focus: var(--focus);
 
   --color-paper: var(--paper);
+  --color-paper-light: var(--paper-light);
+  --color-paper-line: var(--paper-line);
   --color-paper-deep: var(--paper-deep);
   --color-paper-texture: var(--paper-texture);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
+  --color-acid: var(--acid);
+  --color-acid-hover: var(--acid-hover);
+  --color-cobalt: var(--cobalt);
+  --color-cobalt-hover: var(--cobalt-hover);
+  --color-coral-hover: var(--coral-hover);
   --color-lime: var(--lime);
   --color-lime-deep: var(--lime-deep);
   --color-lime-ink: var(--lime-ink);
@@ -121,15 +149,13 @@ body {
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Paper grain — a single tiled SVG noise data-uri, blended directly into the
-   element's own background layer (not a separate overlay) so it can never
-   interact with sibling stacking contexts. Kept subtle so it never touches
-   text contrast (spec 5.1: "must not reduce text contrast"). */
+/* Paper texture — two very low-opacity radial gradients only, no image asset.
+   Kept faint enough that it never reduces text contrast. */
 .paper-grain {
   background-color: var(--paper);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.06 0 0 0 0 0.05 0 0 0 0 0.02 0 0 0 0.12 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 180px 180px;
-  background-blend-mode: multiply;
+  background-image:
+    radial-gradient(ellipse 70% 55% at 22% 18%, rgba(255, 255, 255, 0.5), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 82% 88%, rgba(16, 23, 19, 0.035), transparent 62%);
 }
 
 .font-display {
@@ -150,6 +176,34 @@ body {
   animation: rise-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* Drop control: the outer ring pulses once when a drag enters, never loops. */
+@keyframes drop-ring-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(1.14);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.14);
+    opacity: 0;
+  }
+}
+.drop-control--drag .drop-control__ring {
+  animation: drop-ring-pulse 620ms ease-out 1 both;
+}
+
+@keyframes action-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.action-spinner {
+  animation: action-spin 700ms linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -158,6 +212,13 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Drop the lift/scale transforms entirely, not just their duration. */
+  .drop-control:hover,
+  .drop-control:active,
+  .drop-control--drag {
+    transform: none !important;
   }
 }
 
