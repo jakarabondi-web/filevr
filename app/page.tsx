@@ -3,8 +3,7 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 import { UtilityBar } from "@/components/layout/utility-bar";
 import { PrivacyStrip } from "@/components/layout/privacy-strip";
 import { AppFooter } from "@/components/layout/app-footer";
-import { EditorialStatement } from "@/components/upload/editorial-statement";
-import { DocumentWorkbench } from "@/components/upload/document-workbench";
+import { HeroWorkbench } from "@/components/upload/hero-workbench";
 import { ContinueRibbon } from "@/components/files/continue-ribbon";
 import { CategoryExplorer } from "@/components/marketing/category-explorer";
 import { StepsExplainer } from "@/components/marketing/steps-explainer";
@@ -26,8 +25,7 @@ export default async function HomePage() {
         <div className="paper-grain flex flex-1 flex-col xl:flex-row">
           <div className="min-w-0 flex-1">
             <UtilityBar user={user} />
-            <EditorialStatement />
-            <DocumentWorkbench />
+            <HeroWorkbench />
             <ContinueRibbon user={user} />
           </div>
           <PrivacyStrip />

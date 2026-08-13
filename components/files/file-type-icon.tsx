@@ -1,4 +1,4 @@
-import { FileText } from "lucide-react";
+import { File, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Kind = "pdf" | "word" | "generic";
@@ -10,26 +10,26 @@ function kindFromName(name: string): Kind {
   return "generic";
 }
 
-const KIND_STYLES: Record<Kind, { bg: string; fg: string; label: string }> = {
-  pdf: { bg: "bg-coral/15", fg: "text-coral", label: "PDF" },
-  word: { bg: "bg-primary/15", fg: "text-primary", label: "W" },
-  generic: { bg: "bg-border", fg: "text-muted", label: "" },
-};
-
+/** Outlined page glyph color-coded by file type, matching the reference bar. */
 export function FileTypeIcon({ name, className }: { name: string; className?: string }) {
   const kind = kindFromName(name);
-  const { bg, fg, label } = KIND_STYLES[kind];
 
+  if (kind === "generic") {
+    return <FileText aria-hidden="true" className={cn("size-7 shrink-0 text-ink/60", className)} strokeWidth={1.6} />;
+  }
+
+  const color = kind === "pdf" ? "text-coral" : "text-primary";
   return (
-    <span
-      className={cn("flex size-7 shrink-0 items-center justify-center rounded-md", bg, fg, className)}
-      aria-hidden="true"
-    >
-      {label ? (
-        <span className="text-[10px] font-black tracking-tight">{label}</span>
-      ) : (
-        <FileText className="size-4" strokeWidth={2} />
-      )}
+    <span className={cn("relative inline-flex size-7 shrink-0 items-center justify-center", color, className)} aria-hidden="true">
+      <File className="absolute inset-0 size-full" strokeWidth={1.6} />
+      <span
+        className={cn(
+          "relative font-black leading-none",
+          kind === "pdf" ? "mt-[9px] text-[6px] tracking-tight" : "mt-[8px] text-[10px]"
+        )}
+      >
+        {kind === "pdf" ? "PDF" : "W"}
+      </span>
     </span>
   );
 }

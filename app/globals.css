@@ -21,9 +21,9 @@
   --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 6px 18px rgba(16, 24, 40, 0.06);
 
   /* Homepage editorial-workbench palette — "Acid Paper" (default theme) */
-  --paper: #f1ead8;
-  --paper-deep: #e6dcc2;
-  --paper-texture: #e2d6b8;
+  --paper: #f3eee3;
+  --paper-deep: #e9e2d2;
+  --paper-texture: #ded5c0;
   --ink: #121014;
   --ink-soft: #33303a;
   --lime: #d6f83a;

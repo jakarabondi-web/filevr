@@ -1,62 +1,66 @@
 import Link from "next/link";
-import { Home, FolderKanban, LayoutTemplate, Compass, ChevronDown, LogIn } from "lucide-react";
+import { Home, Folder, FileText, Compass, ChevronDown, LogIn } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 
 const NAV_ITEM_CLASS =
-  "flex flex-col items-center gap-1.5 text-xs font-medium text-white/70 hover:text-lime transition-colors focus-ring rounded-md py-1";
+  "flex flex-col items-center gap-2 rounded-md py-1 text-[13.5px] font-semibold text-white/80 transition-colors hover:text-lime focus-ring";
+
+/** Angular lime "F" mark from the reference wordmark. */
+function LogoMark() {
+  return (
+    <svg viewBox="0 0 26 30" className="h-8 w-auto" aria-hidden="true">
+      <path d="M3 1h20l-5 7h-7v4h10l-5 7h-5v10H3z" fill="var(--lime)" />
+    </svg>
+  );
+}
 
 export function AppRail({ user }: { user: SessionUser | null }) {
   return (
     <aside
       aria-label="Primary"
-      className="hidden md:flex md:w-38 lg:w-[152px] shrink-0 flex-col items-center justify-between bg-ink py-6 px-3"
+      className="hidden shrink-0 flex-col items-center justify-between bg-ink px-3 py-7 md:flex md:w-38 lg:w-[152px]"
     >
-      <div className="flex w-full flex-col items-center gap-10">
-        <Link href="/" className="flex items-center gap-1.5 text-white focus-ring rounded-md" aria-label="Filevr home">
-          <span className="flex size-7 items-center justify-center rounded-md bg-lime text-lime-ink font-black text-sm">
-            F
-          </span>
-          <span className="text-sm font-black tracking-wide">FILEVR</span>
+      <div className="flex w-full flex-col items-center gap-12">
+        <Link href="/" className="flex items-center gap-2 rounded-md text-white focus-ring" aria-label="Filevr home">
+          <LogoMark />
+          <span className="text-[17px] font-black tracking-[0.02em]">FILEVR</span>
         </Link>
 
-        <nav className="flex w-full flex-col items-center gap-7" aria-label="Sections">
-          <Link href="/" className={`${NAV_ITEM_CLASS} text-lime`}>
-            <Home
-              aria-hidden="true"
-              className="size-5 drop-shadow-[0_0_7px_rgba(214,248,58,0.55)]"
-              strokeWidth={1.75}
-            />
+        <nav className="flex w-full flex-col items-center gap-9" aria-label="Sections">
+          <Link href="/" className={`${NAV_ITEM_CLASS} text-lime hover:text-lime`}>
+            <Home aria-hidden="true" className="size-6" fill="currentColor" strokeWidth={1.5} />
             Home
           </Link>
           {user ? (
             <Link href="/workspace" className={NAV_ITEM_CLASS}>
-              <FolderKanban aria-hidden="true" className="size-5" strokeWidth={1.75} />
+              <Folder aria-hidden="true" className="size-6" strokeWidth={2} />
               Workspace
             </Link>
           ) : (
             <Link href="/tools" className={NAV_ITEM_CLASS}>
-              <Compass aria-hidden="true" className="size-5" strokeWidth={1.75} />
+              <Compass aria-hidden="true" className="size-6" strokeWidth={2} />
               Explore tools
             </Link>
           )}
           <Link href="/tools" className={NAV_ITEM_CLASS}>
-            <LayoutTemplate aria-hidden="true" className="size-5" strokeWidth={1.75} />
+            <FileText aria-hidden="true" className="size-6" strokeWidth={2} />
             Templates
           </Link>
         </nav>
       </div>
 
-      <div className="w-full border-t border-white/10 pt-4">
+      <div className="w-full">
+        <div className="mx-auto mb-5 h-px w-12 bg-white/25" />
         {user ? (
           <Link
             href="/workspace/settings"
-            className="flex w-full items-center justify-center gap-1 rounded-full focus-ring"
+            className="flex w-full items-center justify-center gap-1.5 rounded-full focus-ring"
             aria-label={`Account: ${user.name}`}
           >
-            <span className="flex size-9 items-center justify-center rounded-full bg-lime text-xs font-bold text-lime-ink">
+            <span className="flex size-11 items-center justify-center rounded-full bg-lime text-sm font-bold text-lime-ink">
               {user.initials}
             </span>
-            <ChevronDown aria-hidden="true" className="size-4 text-white/50" />
+            <ChevronDown aria-hidden="true" className="size-4 text-white/70" strokeWidth={2.5} />
           </Link>
         ) : (
           <Link
