@@ -1,23 +1,37 @@
+import { LocalStorageDriver } from "@/lib/storage/local-driver";
+import { S3StorageDriver } from "@/lib/storage/s3-driver";
+import type { SignedUploadTarget, StorageDriver } from "@/lib/storage/driver";
+
+export type { SignedUploadTarget, StorageDriver, StoredObject } from "@/lib/storage/driver";
+
+let cached: StorageDriver | undefined;
+
 /**
- * Object storage adapter seam (spec section 12): direct-to-storage signed
- * uploads/downloads. Swap for an S3-compatible implementation; the API
- * routes only depend on this interface.
+ * Resolves the driver from STORAGE_DRIVER. Defaults to `local` so a fresh
+ * checkout runs without cloud credentials; production sets it to `s3`.
  */
-export interface SignedUploadTarget {
-  uploadUrl: string;
-  requiredHeaders: Record<string, string>;
-  expiresAt: string;
+export function storage(): StorageDriver {
+  if (cached) return cached;
+  const driver = (process.env.STORAGE_DRIVER ?? "local").toLowerCase();
+  cached = driver === "s3" ? S3StorageDriver.fromEnv() : LocalStorageDriver.fromEnv();
+  return cached;
 }
 
-/** TODO: replace with real signed URL issuance (S3/R2/GCS). Never proxy large bodies through Next.js. */
-export async function createSignedUploadUrl(storageKey: string): Promise<SignedUploadTarget> {
-  return {
-    uploadUrl: `/api/uploads/mock-put?key=${encodeURIComponent(storageKey)}`,
-    requiredHeaders: { "content-type": "application/octet-stream" },
-    expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-  };
+/** Test seam: lets a suite swap in a fake without touching the environment. */
+export function __setStorageForTests(driver: StorageDriver | undefined) {
+  cached = driver;
 }
 
-export async function createSignedDownloadUrl(storageKey: string): Promise<string> {
-  return `/api/downloads/mock-get?key=${encodeURIComponent(storageKey)}`;
+export async function createSignedUploadUrl(
+  storageKey: string,
+  contentType: string
+): Promise<SignedUploadTarget> {
+  return storage().createUploadUrl(storageKey, contentType);
+}
+
+export async function createSignedDownloadUrl(
+  storageKey: string,
+  filename: string
+): Promise<string> {
+  return storage().createDownloadUrl(storageKey, { filename });
 }

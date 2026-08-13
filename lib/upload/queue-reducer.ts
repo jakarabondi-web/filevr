@@ -10,6 +10,7 @@ export type UploadQueueAction =
   | { type: "REMOVE_FILE"; id: string }
   | { type: "SET_PROGRESS"; id: string; progress: number }
   | { type: "SET_STATUS"; id: string; status: QueuedFile["status"] }
+  | { type: "SET_UPLOADED"; id: string; serverFileId: string }
   | { type: "SET_ERROR"; id: string; errorCode: FileErrorCode; errorMessage: string }
   | { type: "RETRY"; id: string }
   | { type: "RESET" };
@@ -37,6 +38,14 @@ export function uploadQueueReducer(
           f.id === action.id ? { ...f, status: action.status } : f
         ),
       };
+    case "SET_UPLOADED":
+      return {
+        files: state.files.map((f) =>
+          f.id === action.id
+            ? { ...f, status: "uploaded", progress: 100, serverFileId: action.serverFileId }
+            : f
+        ),
+      };
     case "SET_ERROR":
       return {
         files: state.files.map((f) =>
@@ -49,7 +58,14 @@ export function uploadQueueReducer(
       return {
         files: state.files.map((f) =>
           f.id === action.id
-            ? { ...f, status: "pending", progress: 0, errorCode: undefined, errorMessage: undefined }
+            ? {
+                ...f,
+                status: "pending",
+                progress: 0,
+                serverFileId: undefined,
+                errorCode: undefined,
+                errorMessage: undefined,
+              }
             : f
         ),
       };

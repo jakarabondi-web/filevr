@@ -49,9 +49,19 @@ export function FilevrWorkbenchPage({ user }: { user: SessionUser | null }) {
       setSelectedAction(action.slug);
       setPaletteOpen(false);
 
-      const ready = files.filter((f) => f.status !== "error");
-      if (ready.length === 0) {
+      // Only verified uploads carry a server file id, and only those are valid
+      // job inputs — the client queue id means nothing to the API.
+      const ready = files.filter((f) => f.status === "uploaded" && f.serverFileId);
+      if (files.length === 0) {
         openPicker();
+        return;
+      }
+      if (ready.length === 0) {
+        setError(
+          files.some((f) => f.status === "uploading")
+            ? "Still uploading. Try again in a moment."
+            : "Those files didn't upload. Retry them first."
+        );
         return;
       }
 
@@ -64,9 +74,12 @@ export function FilevrWorkbenchPage({ user }: { user: SessionUser | null }) {
           method: "POST",
           headers: {
             "content-type": "application/json",
-            "idempotency-key": `${action.slug}-${ready.map((f) => f.id).join("-")}`,
+            "idempotency-key": `${action.slug}-${ready.map((f) => f.serverFileId).join("-")}`,
           },
-          body: JSON.stringify({ toolSlug: action.slug, inputFileIds: ready.map((f) => f.id) }),
+          body: JSON.stringify({
+            toolSlug: action.slug,
+            inputFileIds: ready.map((f) => f.serverFileId),
+          }),
         });
         if (!res.ok) throw new Error(`Job creation failed (${res.status})`);
         const { jobId } = (await res.json()) as { jobId: string };

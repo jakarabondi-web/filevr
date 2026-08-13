@@ -70,6 +70,7 @@ export type QueuedFileStatus =
   | "error";
 
 export interface QueuedFile {
+  /** Client-side queue id. Not the server's file id — see `serverFileId`. */
   id: string;
   file: File;
   name: string;
@@ -77,6 +78,8 @@ export interface QueuedFile {
   mimeType: string;
   status: QueuedFileStatus;
   progress: number;
+  /** Set once the upload is verified; this is what job creation submits. */
+  serverFileId?: string;
   errorCode?: string;
   errorMessage?: string;
 }

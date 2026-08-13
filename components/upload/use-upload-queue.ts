@@ -5,7 +5,13 @@ import {
   initialUploadQueueState,
   uploadQueueReducer,
 } from "@/lib/upload/queue-reducer";
-import { validateFile, validateQueue, type FileValidationResult } from "@/lib/validation/file";
+import {
+  validateFile,
+  validateQueue,
+  type FileErrorCode,
+  type FileValidationResult,
+} from "@/lib/validation/file";
+import { uploadFile, UploadError } from "@/lib/upload/upload-file";
 import type { QueuedFile } from "@/types";
 import { track } from "@/lib/analytics";
 
@@ -17,23 +23,38 @@ function nextId() {
 
 export function useUploadQueue() {
   const [state, dispatch] = useReducer(uploadQueueReducer, initialUploadQueueState);
-  const timers = useRef(new Map<string, ReturnType<typeof setInterval>>());
+  const controllers = useRef(new Map<string, AbortController>());
 
-  const simulateUpload = useCallback((queuedId: string) => {
+  /** Uploads for real: reserve, PUT to storage, confirm. */
+  const startUpload = useCallback((queuedId: string, file: File) => {
     dispatch({ type: "SET_STATUS", id: queuedId, status: "uploading" });
     track("upload_started");
-    let progress = 0;
-    const timer = setInterval(() => {
-      progress = Math.min(100, progress + Math.round(15 + Math.random() * 20));
-      dispatch({ type: "SET_PROGRESS", id: queuedId, progress });
-      if (progress >= 100) {
-        clearInterval(timer);
-        timers.current.delete(queuedId);
-        dispatch({ type: "SET_STATUS", id: queuedId, status: "uploaded" });
+
+    const controller = new AbortController();
+    controllers.current.set(queuedId, controller);
+
+    void uploadFile(file, {
+      signal: controller.signal,
+      onProgress: (progress) => dispatch({ type: "SET_PROGRESS", id: queuedId, progress }),
+    })
+      .then(({ fileId }) => {
+        dispatch({ type: "SET_UPLOADED", id: queuedId, serverFileId: fileId });
         track("upload_completed");
-      }
-    }, 220);
-    timers.current.set(queuedId, timer);
+      })
+      .catch((err: unknown) => {
+        if (err instanceof UploadError && err.code === "ABORTED") return;
+        const message =
+          err instanceof UploadError ? err.message : "Upload failed. Check your connection and try again.";
+        const code = err instanceof UploadError ? err.code : "UPLOAD_FAILED";
+        dispatch({
+          type: "SET_ERROR",
+          id: queuedId,
+          errorCode: code as FileErrorCode,
+          errorMessage: message,
+        });
+        track("upload_failed", { reason: code });
+      })
+      .finally(() => controllers.current.delete(queuedId));
   }, []);
 
   const addFiles = useCallback(
@@ -65,7 +86,7 @@ export function useUploadQueue() {
 
       dispatch({ type: "ADD_FILES", files: queued });
       queued.forEach((qf) => {
-        if (qf.status === "pending") simulateUpload(qf.id);
+        if (qf.status === "pending") startUpload(qf.id, qf.file);
         else track("upload_failed", { reason: qf.errorCode ?? "unknown" });
       });
 
@@ -84,29 +105,29 @@ export function useUploadQueue() {
 
       return { valid: true } as const;
     },
-    [simulateUpload, state.files]
+    [startUpload, state.files]
   );
 
   const removeFile = useCallback((id: string) => {
-    const timer = timers.current.get(id);
-    if (timer) {
-      clearInterval(timer);
-      timers.current.delete(id);
-    }
+    // Abort an upload in flight so its bytes stop consuming bandwidth.
+    controllers.current.get(id)?.abort();
+    controllers.current.delete(id);
     dispatch({ type: "REMOVE_FILE", id });
   }, []);
 
   const retryFile = useCallback(
     (id: string) => {
+      const target = state.files.find((f) => f.id === id);
+      if (!target) return;
       dispatch({ type: "RETRY", id });
-      simulateUpload(id);
+      startUpload(id, target.file);
     },
-    [simulateUpload]
+    [startUpload, state.files]
   );
 
   const reset = useCallback(() => {
-    timers.current.forEach((t) => clearInterval(t));
-    timers.current.clear();
+    controllers.current.forEach((c) => c.abort());
+    controllers.current.clear();
     dispatch({ type: "RESET" });
   }, []);
 

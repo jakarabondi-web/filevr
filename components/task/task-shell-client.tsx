@@ -14,7 +14,7 @@ interface JobStatusResponse {
   status: JobStatus;
   progress: number;
   errorMessage?: string;
-  outputs?: { id: string; name: string; sizeBytes: number }[];
+  outputs?: { id: string; name: string; sizeBytes: number; downloadUrl?: string }[];
 }
 
 const STEPS = [
@@ -101,7 +101,12 @@ export function TaskShellClient({ tool, jobId }: { tool: ToolDefinition; jobId: 
             </Link>
           </div>
         ) : status === "completed" && output ? (
-          <ResultCard filename={output.name} sizeBytes={output.sizeBytes} onStartOver={() => router.push(`/tools/${tool.slug}`)} />
+          <ResultCard
+            filename={output.name}
+            sizeBytes={output.sizeBytes}
+            downloadUrl={output.downloadUrl}
+            onStartOver={() => router.push(`/tools/${tool.slug}`)}
+          />
         ) : (
           <ProcessingProgress progress={job?.progress ?? 0} label={`${tool.name} in progress`} />
         )}

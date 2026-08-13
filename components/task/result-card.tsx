@@ -2,16 +2,19 @@
 
 import Link from "next/link";
 import { CheckCircle2, Download, RotateCcw, Upload as UploadIcon } from "lucide-react";
-import { formatBytes } from "@/lib/utils";
+import { cn, formatBytes } from "@/lib/utils";
 import { track } from "@/lib/analytics";
 
 export function ResultCard({
   filename,
   sizeBytes,
+  downloadUrl,
   onStartOver,
 }: {
   filename: string;
   sizeBytes: number;
+  /** Signed, expiring URL minted per status poll. */
+  downloadUrl?: string;
   onStartOver: () => void;
 }) {
   return (
@@ -24,9 +27,20 @@ export function ResultCard({
         </p>
       </div>
       <a
-        href="#"
-        onClick={() => track("result_downloaded")}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white hover:bg-primary-hover focus-ring"
+        href={downloadUrl ?? "#"}
+        download={filename}
+        aria-disabled={!downloadUrl}
+        onClick={(e) => {
+          if (!downloadUrl) {
+            e.preventDefault();
+            return;
+          }
+          track("result_downloaded");
+        }}
+        className={cn(
+          "inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white focus-ring",
+          downloadUrl ? "hover:bg-primary-hover" : "pointer-events-none opacity-50"
+        )}
       >
         <Download aria-hidden="true" className="size-4" />
         Download

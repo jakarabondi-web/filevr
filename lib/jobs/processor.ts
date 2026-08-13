@@ -15,7 +15,11 @@ export class MockDocumentProcessor implements DocumentProcessor {
   private timers = new Map<string, ReturnType<typeof setInterval>>();
 
   constructor(
-    private readonly onProgress: (jobId: string, progress: number, status: DocumentJob["status"]) => void
+    private readonly onProgress: (
+      jobId: string,
+      progress: number,
+      status: DocumentJob["status"]
+    ) => void | Promise<void>
   ) {}
 
   async start(job: DocumentJob): Promise<void> {
@@ -25,10 +29,13 @@ export class MockDocumentProcessor implements DocumentProcessor {
       if (progress >= 100) {
         clearInterval(timer);
         this.timers.delete(job.id);
-        this.onProgress(job.id, 100, "completed");
+        // Persisting the output is async; failures must not crash the timer.
+        void Promise.resolve(this.onProgress(job.id, 100, "completed")).catch((err) =>
+          console.error(`Job ${job.id} failed to finalize`, err)
+        );
         return;
       }
-      this.onProgress(job.id, progress, "processing");
+      void Promise.resolve(this.onProgress(job.id, progress, "processing")).catch(() => {});
     }, 500);
     this.timers.set(job.id, timer);
   }
