@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, lt } from "drizzle-orm";
+import { and, asc, eq, isNull, lt, notInArray } from "drizzle-orm";
 import { randomBytes, randomUUID } from "node:crypto";
 import { db } from "@/lib/db/client";
 import { files, idempotencyKeys, jobInputs, jobs } from "@/lib/db/schema";
@@ -174,6 +174,24 @@ export async function getJob(jobId: string): Promise<DocumentJob | undefined> {
     inputs.map((r) => r.file),
     outputs
   );
+}
+
+/** Statuses after which a job must never move again. */
+const TERMINAL_STATUSES: JobStatus[] = ["completed", "processing_failed", "deleted", "expired"];
+
+/**
+ * Progress-only update that cannot resurrect a finished job.
+ *
+ * The worker reports progress on a throttle, so a write can still be in flight
+ * when the job completes. Without this guard that late write lands after the
+ * terminal update and flips the job back to "processing", leaving the client
+ * polling a job that is actually done.
+ */
+export async function updateJobProgress(jobId: string, progress: number): Promise<void> {
+  await db
+    .update(jobs)
+    .set({ progress, status: "processing" })
+    .where(and(eq(jobs.id, jobId), notInArray(jobs.status, TERMINAL_STATUSES)));
 }
 
 export async function updateJob(

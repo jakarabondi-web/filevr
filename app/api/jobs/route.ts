@@ -6,7 +6,7 @@ import {
   recordIdempotencyKey,
   updateJob,
 } from "@/lib/db/repository";
-import { mockProcessor } from "@/lib/jobs/mock-processor-instance";
+import { enqueueConversion } from "@/lib/queue/producer";
 import { getToolBySlug } from "@/config/tools";
 import { getSessionUser } from "@/lib/auth";
 
@@ -52,9 +52,18 @@ export async function POST(request: NextRequest) {
 
   await recordIdempotencyKey(idempotencyKey, job.id);
 
-  // TODO (Phase 2): enqueue to BullMQ instead of starting the mock in-process.
-  const started = await updateJob(job.id, { status: "processing", startedAt: new Date() });
-  if (started) void mockProcessor.start(started);
+  // Hand off to the worker. The API never processes bytes itself.
+  try {
+    await enqueueConversion({ jobId: job.id, toolSlug: body.toolSlug });
+  } catch (err) {
+    await updateJob(job.id, {
+      status: "processing_failed",
+      errorCode: "QUEUE_UNAVAILABLE",
+      errorMessage: "We couldn't start processing. Try again in a moment.",
+    });
+    console.error("Failed to enqueue job", job.id, err);
+    return NextResponse.json({ errorCode: "QUEUE_UNAVAILABLE" }, { status: 503 });
+  }
 
-  return NextResponse.json({ jobId: job.id, status: "processing" });
+  return NextResponse.json({ jobId: job.id, status: "queued" });
 }

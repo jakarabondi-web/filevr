@@ -9,23 +9,35 @@ export function ResultCard({
   filename,
   sizeBytes,
   downloadUrl,
+  passthrough = false,
   onStartOver,
 }: {
   filename: string;
   sizeBytes: number;
   /** Signed, expiring URL minted per status poll. */
   downloadUrl?: string;
+  /** True when no engine exists yet, so the file came back unchanged. */
+  passthrough?: boolean;
   onStartOver: () => void;
 }) {
   return (
     <div className="mx-auto flex max-w-md flex-col items-center gap-4 rounded-2xl border border-border bg-surface p-8 text-center">
       <CheckCircle2 aria-hidden="true" className="size-12 text-success" />
       <div>
-        <p className="text-lg font-semibold text-text">Your file is ready</p>
+        <p className="text-lg font-semibold text-text">
+          {passthrough ? "Your file is here" : "Your file is ready"}
+        </p>
         <p className="mt-1 text-sm text-muted">
           {filename} · {formatBytes(sizeBytes)}
         </p>
       </div>
+      {passthrough && (
+        <p className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-text">
+          This tool isn&apos;t available yet, so your file comes back unchanged. Nothing was
+          altered.
+        </p>
+      )}
+
       <a
         href={downloadUrl ?? "#"}
         download={filename}

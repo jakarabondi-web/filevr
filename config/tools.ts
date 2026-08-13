@@ -78,6 +78,21 @@ export const TOOLS: ToolDefinition[] = [
   },
 ];
 
+/**
+ * Tools backed by a real conversion engine. Anything else currently returns the
+ * uploaded file unchanged, and the UI says so rather than implying a conversion
+ * happened. Keep in step with the engine registry in lib/engines — that module
+ * asserts the two agree.
+ *
+ * This lives here, not in lib/engines, because the client bundle needs it and
+ * the engines import node:child_process.
+ */
+export const TOOLS_WITH_ENGINES: ReadonlySet<string> = new Set(["compress-pdf", "merge-pdf"]);
+
+export function toolHasEngine(slug: string): boolean {
+  return TOOLS_WITH_ENGINES.has(slug);
+}
+
 export const TOOL_CATEGORIES: ToolDefinition["category"][] = [
   "Convert",
   "Edit",

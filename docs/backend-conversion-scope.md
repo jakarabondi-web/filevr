@@ -1,9 +1,9 @@
 # Real conversion: backend scope
 
-Filevr still converts nothing — `MockDocumentProcessor` advances a counter on a
-timer rather than transforming anything — but as of Phase 0 the infrastructure
-around that gap is real: files are persisted in Postgres, bytes go to object
-storage, uploads are verified server-side, and downloads work.
+**Filevr now really converts.** Compress and Merge run Ghostscript and qpdf in a
+dedicated worker process; a 695 KB image-heavy PDF compresses to 12 KB with all
+pages intact. The remaining four tools have no engine yet and return the
+uploaded file unchanged, with the result screen saying so plainly.
 
 `.env.example` commits to the target stack: PostgreSQL, S3-compatible storage, a
 Redis-backed queue, Stripe, and Auth.js/Clerk. This document scopes the work to
@@ -36,7 +36,7 @@ The state Phase 0 started from, and what each piece became.
 | Area | Before Phase 0 | Now |
 |---|---|---|
 | Job store | `lib/jobs/store.ts`, in-memory `Map` | ✅ Postgres via Drizzle |
-| Processing | `MockDocumentProcessor` timer | ⬜ BullMQ producer; worker consumes (Phase 1) |
+| Processing | `MockDocumentProcessor` timer | ✅ BullMQ producer; worker container consumes |
 | Storage | Stub URLs to nonexistent routes | ✅ S3/R2 presigned PUT and GET, plus a local dev driver |
 | Client upload | `simulateUpload` timer, bytes never leave the browser | ✅ Real PUT to storage with real progress |
 | File IDs | Client queue IDs (`qf_1_…`) sent to `/api/jobs` | ✅ Server file IDs from `/api/uploads` |
@@ -86,9 +86,10 @@ Both need an explicit scope decision before estimating.
 
 ## Phased plan
 
-> **Status: Phase 0 is done.** Postgres, real object storage, real uploads with
-> verification, and working downloads are all in place. See "Running it locally"
-> below. Phase 1 (queue + worker + first real engine) is the next step.
+> **Status: Phases 0 and 1 are done, and Phase 2 is half done.** Postgres,
+> object storage, verified uploads, downloads, the queue, the worker, and real
+> engines for Compress and Merge are all in place. See "Running it locally".
+> Next: OCR, then the PDF→Word build-vs-buy decision.
 
 **Phase 0 — Foundations (2–3 weeks).** Postgres schema and migrations replacing
 the in-memory store; S3/R2 wired into `lib/storage` with presigned PUT; a real
@@ -102,8 +103,8 @@ container with Ghostscript; job leasing, progress reporting, retries, and a
 dead-letter queue; deploy the worker. Ship Compress end-to-end. This phase
 proves the entire path and de-risks everything after it.
 
-**Phase 2 — Merge and OCR (1.5–2 weeks).** Both slot into the Phase 1 harness.
-OCR needs worker CPU sizing and a decision on which language packs to ship.
+**Phase 2 — Merge and OCR (1.5–2 weeks).** Merge is done. OCR still needs worker
+CPU sizing and a decision on which language packs to ship in the image.
 
 **Phase 3 — PDF → Word (3–5 days buying, 2–4 weeks building).** Gated on the
 build-vs-buy decision.
@@ -168,12 +169,57 @@ cp .env.example .env.local
 # 3. Schema
 npx drizzle-kit migrate
 
-# 4. Run
-npm run dev
+# 4. Redis for the job queue
+redis-server --port 6380 --daemonize yes
+#    REDIS_URL=redis://127.0.0.1:6380
+
+# 5. Conversion engines
+apt-get install -y ghostscript qpdf
+
+# 6. Run both processes
+npm run dev      # app
+npm run worker   # conversion worker, separate terminal
 ```
+
+Without the worker running, jobs are accepted and queue up; they process as soon
+as a worker appears. That is the intended behaviour, not a failure mode.
 
 Switching to real object storage is a matter of setting `STORAGE_DRIVER=s3` plus
 the bucket variables; no application code changes.
+
+### What Phase 1 delivered
+
+- **Queue and worker.** BullMQ over Redis, with the job id as the BullMQ job id
+  so a double-enqueue is dropped rather than processed twice. The worker
+  (`npm run worker`) leases a job, pulls inputs into a scratch directory, runs
+  the engine, writes outputs back, and removes the directory whatever happens.
+- **Real engines.** Compress uses Ghostscript (`-dSAFER`, quality presets);
+  Merge uses qpdf, which has no rendering engine and so a far smaller attack
+  surface. Both verify their own output preserved the page count.
+- **One place that runs binaries** (`lib/engines/run-command.ts`): arguments as
+  an array so a filename can never become shell syntax, a hard timeout with
+  SIGKILL, capped output, and a minimal environment so a compromised binary
+  cannot read the database URL or storage credentials.
+- **Retries that distinguish cause.** Bad input fails immediately with a
+  user-facing message; infrastructure faults retry three times with exponential
+  backoff. A job is only marked failed once retries are exhausted, so the UI
+  never flashes an error a retry is about to clear.
+- **Honest UI for unimplemented tools.** The four tools without engines return
+  the file unchanged, and the result screen says so instead of implying a
+  conversion happened.
+- **A deployment image** (`worker/Dockerfile`) with the runtime hardening flags
+  documented alongside it.
+
+Two bugs worth recording, both found by testing rather than review:
+
+- **Ghostscript exits 0 on input it cannot read.** It prints "Couldn't
+  initialise file", emits a single garbage page, and returns success. Exit code
+  alone would have shipped corrupt files to users as "compressed". Engines now
+  compare page counts across the operation and scan Ghostscript's diagnostics.
+- **Throttled progress writes raced the terminal update.** A late progress write
+  landed after "completed" and flipped the job back to "processing", leaving the
+  client polling forever. Progress updates now refuse to touch a job in a
+  terminal state.
 
 ### What Phase 0 delivered
 
@@ -193,10 +239,16 @@ the bucket variables; no application code changes.
   another instance created a duplicate job.
 - **Working downloads.** Signed and expiring, replacing `href="#"`.
 
-### Known gaps heading into Phase 1
+### Known gaps
 
-- Conversion is still mocked: the processor copies input bytes to the output
-  key so the plumbing is exercised with real files, but nothing is transformed.
+- **Four tools have no engine**: PDF→Word, OCR, Sign, and Edit return the input
+  unchanged, labelled as such in the UI.
+- **No dead-letter queue yet.** Exhausted jobs are marked failed in Postgres and
+  BullMQ keeps them for 24 hours, but nothing routes them anywhere for triage.
+- **Progress is coarse.** Engines report at a few checkpoints rather than
+  tracking the binary's own output, so the bar jumps.
+- **Worker sandboxing is documented, not enforced.** The Dockerfile lists the
+  flags; the platform has to apply them.
 - Verification buffers the whole file to hash it. Fine at the 100 MB free
   ceiling; Phase 5 should stream once Pro limits raise it.
 - No virus scanning yet — the hook belongs in the completion endpoint.

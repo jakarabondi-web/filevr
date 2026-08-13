@@ -7,6 +7,7 @@ import { AlertTriangle, HelpCircle } from "lucide-react";
 import { TaskStepper } from "@/components/task/task-stepper";
 import { ProcessingProgress } from "@/components/task/processing-progress";
 import { ResultCard } from "@/components/task/result-card";
+import { toolHasEngine } from "@/config/tools";
 import type { ToolDefinition, JobStatus } from "@/types";
 import { track } from "@/lib/analytics";
 
@@ -105,6 +106,7 @@ export function TaskShellClient({ tool, jobId }: { tool: ToolDefinition; jobId: 
             filename={output.name}
             sizeBytes={output.sizeBytes}
             downloadUrl={output.downloadUrl}
+            passthrough={!toolHasEngine(tool.slug)}
             onStartOver={() => router.push(`/tools/${tool.slug}`)}
           />
         ) : (
