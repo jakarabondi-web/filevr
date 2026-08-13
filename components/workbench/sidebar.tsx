@@ -78,7 +78,8 @@ export function Sidebar({ user }: { user: SessionUser | null }) {
         <div className="max-xl:[&_span]:hidden">
           <Brand />
         </div>
-        <div className="mt-[57px] max-xl:[&_span]:sr-only max-xl:[&_a]:w-auto">
+        {/* Brand sits at y=28 and is 30px tall, so 93px lands nav at y=151. */}
+        <div className="mt-[93px] max-xl:[&_span]:sr-only max-xl:[&_a]:w-auto">
           <SidebarNav user={user} />
         </div>
       </div>
