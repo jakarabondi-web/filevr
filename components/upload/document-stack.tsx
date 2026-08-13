@@ -49,9 +49,14 @@ export function DocumentStack() {
       </div>
 
       <div
-        className="absolute left-1/2 top-6 w-[230px] -translate-x-1/2 rotate-[1.5deg] rounded-xl border border-black/10 bg-white p-4 sm:w-[260px] sm:p-5 lg:top-8 lg:w-[290px]"
+        className="absolute left-1/2 top-6 w-[230px] -translate-x-1/2 rotate-[1.5deg] overflow-hidden rounded-xl border border-black/10 bg-white p-4 sm:w-[260px] sm:p-5 lg:top-8 lg:w-[290px]"
         style={{ boxShadow: "0 3px 6px rgba(18,16,20,0.1), 0 26px 40px -14px rgba(18,16,20,0.38)" }}
       >
+        <span
+          aria-hidden="true"
+          className="absolute right-0 top-0 border-b-[16px] border-l-[16px] border-b-transparent border-l-[#e9e4d6]"
+          style={{ filter: "drop-shadow(-1px 1px 1px rgba(18,16,20,0.12))" }}
+        />
         <p className="text-[10px] font-bold tracking-wide text-ink sm:text-xs">CONTRACT AGREEMENT</p>
         <p className="mt-2 text-[7px] leading-relaxed text-muted sm:text-[8px]">
           This agreement is made between the parties listed below.
