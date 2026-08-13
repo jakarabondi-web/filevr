@@ -1,5 +1,6 @@
 import { compressPdfEngine } from "@/lib/engines/compress-pdf";
 import { mergePdfEngine } from "@/lib/engines/merge-pdf";
+import { ocrPdfEngine } from "@/lib/engines/ocr-pdf";
 import type { ConversionEngine } from "@/lib/engines/types";
 import { TOOLS_WITH_ENGINES } from "@/config/tools";
 
@@ -14,6 +15,7 @@ export { EngineError } from "@/lib/engines/types";
 const ENGINES = new Map<string, ConversionEngine>([
   [compressPdfEngine.toolSlug, compressPdfEngine],
   [mergePdfEngine.toolSlug, mergePdfEngine],
+  [ocrPdfEngine.toolSlug, ocrPdfEngine],
 ]);
 
 export function getEngine(toolSlug: string): ConversionEngine | undefined {

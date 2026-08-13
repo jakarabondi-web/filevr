@@ -10,8 +10,20 @@ FROM node:22-slim AS runtime
 
 # Conversion engines. Ghostscript and qpdf carry known CVE history, so keep the
 # base image patched and rebuild on a schedule, not only on code changes.
+#
+# OCR (ocrmypdf + tesseract + poppler) adds roughly 180 MB to the image. Each
+# additional language pack adds 2-15 MB more, so add them deliberately and keep
+# lib/engines/ocr-pdf.ts OCR_LANGUAGES in step — the engine rejects any language
+# the image does not ship.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ghostscript qpdf tini ca-certificates \
+    && apt-get install -y --no-install-recommends \
+        ghostscript \
+        qpdf \
+        ocrmypdf \
+        tesseract-ocr-eng \
+        poppler-utils \
+        tini \
+        ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -45,6 +57,8 @@ CMD ["npx", "tsx", "worker/index.ts"]
 #                                    platform requires egress for those, restrict
 #                                    it to those hosts rather than allowing all
 #   --memory 2g --cpus 2             bound a pathological file's blast radius
+#                                    OCR is the memory-hungry engine: budget
+#                                    ~1 GB per concurrent job at 300 dpi
 #   --pids-limit 128
 #
 # On Kubernetes, prefer gVisor or Kata for the same reasons: every uploaded file

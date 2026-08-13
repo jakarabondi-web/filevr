@@ -21,6 +21,20 @@ export async function pdfPageCount(path: string, timeoutMs = 15_000): Promise<nu
   }
 }
 
+/**
+ * Whether the PDF carries an extractable text layer. Used to verify OCR
+ * actually produced one, and to tell a scan apart from a born-digital file.
+ */
+export async function pdfHasText(path: string, timeoutMs = 20_000): Promise<boolean> {
+  try {
+    const { stdout } = await runCommand("pdftotext", ["-q", path, "-"], { timeoutMs });
+    return stdout.replace(/\s/g, "").length > 0;
+  } catch (err) {
+    if (err instanceof CommandError && err.code === "SPAWN_FAILED") throw err;
+    return false;
+  }
+}
+
 /** Ghostscript reports these on stdout while still exiting 0. */
 const GS_FAILURE_MARKERS = [
   "Couldn't initialise file",

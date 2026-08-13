@@ -87,7 +87,7 @@ export const TOOLS: ToolDefinition[] = [
  * This lives here, not in lib/engines, because the client bundle needs it and
  * the engines import node:child_process.
  */
-export const TOOLS_WITH_ENGINES: ReadonlySet<string> = new Set(["compress-pdf", "merge-pdf"]);
+export const TOOLS_WITH_ENGINES: ReadonlySet<string> = new Set(["compress-pdf", "merge-pdf", "ocr-pdf"]);
 
 export function toolHasEngine(slug: string): boolean {
   return TOOLS_WITH_ENGINES.has(slug);

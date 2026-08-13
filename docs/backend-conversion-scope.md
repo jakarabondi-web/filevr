@@ -1,8 +1,9 @@
 # Real conversion: backend scope
 
-**Filevr now really converts.** Compress and Merge run Ghostscript and qpdf in a
-dedicated worker process; a 695 KB image-heavy PDF compresses to 12 KB with all
-pages intact. The remaining four tools have no engine yet and return the
+**Filevr now really converts.** Compress, Merge, and OCR run Ghostscript, qpdf,
+and Tesseract in a dedicated worker process: a 695 KB image-heavy PDF compresses
+to 12 KB with all pages intact, and a scan with no text layer at all comes back
+fully searchable. The remaining three tools have no engine yet and return the
 uploaded file unchanged, with the result screen saying so plainly.
 
 `.env.example` commits to the target stack: PostgreSQL, S3-compatible storage, a
@@ -66,9 +67,9 @@ polls job status and finally requests a presigned download.
 
 | Tool | Engine | Difficulty | Note |
 |---|---|---|---|
-| Compress | Ghostscript | Low | Well-solved; good first tool to prove the pipeline |
-| Merge | qpdf or pdf-lib | Low | Pure page assembly |
-| OCR | OCRmyPDF (Tesseract + Ghostscript) | Medium | CPU-heavy; language packs inflate the image |
+| Compress | Ghostscript | Low | ✅ Shipped |
+| Merge | qpdf | Low | ✅ Shipped |
+| OCR | OCRmyPDF (Tesseract + Ghostscript) | Medium | ✅ Shipped, English only |
 | Edit — page ops | pdf-lib | Low | Rotate, delete, reorder, insert |
 | Edit — text editing | — | Very high | Font subsetting and reflow; a product in itself |
 | Sign — self-sign | pdf-lib | Low–medium | Stamp an image or drawn signature |
@@ -86,10 +87,10 @@ Both need an explicit scope decision before estimating.
 
 ## Phased plan
 
-> **Status: Phases 0 and 1 are done, and Phase 2 is half done.** Postgres,
-> object storage, verified uploads, downloads, the queue, the worker, and real
-> engines for Compress and Merge are all in place. See "Running it locally".
-> Next: OCR, then the PDF→Word build-vs-buy decision.
+> **Status: Phases 0, 1 and 2 are done.** Postgres, object storage, verified
+> uploads, downloads, the queue, the worker, and real engines for Compress,
+> Merge and OCR are all in place. See "Running it locally". Next up is Phase 3,
+> which is gated on the PDF→Word build-vs-buy decision.
 
 **Phase 0 — Foundations (2–3 weeks).** Postgres schema and migrations replacing
 the in-memory store; S3/R2 wired into `lib/storage` with presigned PUT; a real
@@ -103,8 +104,8 @@ container with Ghostscript; job leasing, progress reporting, retries, and a
 dead-letter queue; deploy the worker. Ship Compress end-to-end. This phase
 proves the entire path and de-risks everything after it.
 
-**Phase 2 — Merge and OCR (1.5–2 weeks).** Merge is done. OCR still needs worker
-CPU sizing and a decision on which language packs to ship in the image.
+**Phase 2 — Merge and OCR (1.5–2 weeks).** Done. OCR ships English only; each
+extra language pack adds 2–15 MB to the worker image.
 
 **Phase 3 — PDF → Word (3–5 days buying, 2–4 weeks building).** Gated on the
 build-vs-buy decision.
@@ -174,7 +175,7 @@ redis-server --port 6380 --daemonize yes
 #    REDIS_URL=redis://127.0.0.1:6380
 
 # 5. Conversion engines
-apt-get install -y ghostscript qpdf
+apt-get install -y ghostscript qpdf ocrmypdf tesseract-ocr-eng poppler-utils
 
 # 6. Run both processes
 npm run dev      # app
@@ -186,6 +187,34 @@ as a worker appears. That is the intended behaviour, not a failure mode.
 
 Switching to real object storage is a matter of setting `STORAGE_DRIVER=s3` plus
 the bucket variables; no application code changes.
+
+### What Phase 2 delivered
+
+- **Merge** via qpdf, verifying the output page count equals the sum of its
+  inputs so a silently dropped document becomes an error, not a surprise.
+- **OCR** via OCRmyPDF. Pages that already carry real text are skipped rather
+  than re-recognised: born-digital text always beats OCR of a rendering of that
+  text, so `--force-ocr` would actively degrade mixed documents. The engine
+  verifies a text layer actually exists afterwards, and refuses rather than
+  returning an unchanged file labelled "searchable".
+- **Language handling.** Requested languages are validated against what the
+  image ships (English today) instead of being passed to Tesseract, where an
+  unavailable pack fails with an opaque message.
+
+A third bug found by testing, in the same vein as the two below:
+
+- **`--rotate-pages` fails a whole document over one unreadable page.** It runs
+  Tesseract's orientation detection, which errors with "Too few characters" on
+  any page lacking text — and real scans routinely contain blank pages,
+  dividers, and photographs. A 50-page scan would have failed entirely because
+  of one blank sheet. Auto-rotation and deskewing are now best-effort: if the
+  enhanced pass fails, the engine retries a plain pass rather than losing the
+  document.
+
+Costs worth knowing: OCR takes about 6 seconds per page at 200 dpi on one core,
+against roughly 1 second for a whole compress job, and the OCR toolchain adds
+about 180 MB to the worker image. This is the tool that makes per-page billing
+matter.
 
 ### What Phase 1 delivered
 
@@ -241,8 +270,11 @@ Two bugs worth recording, both found by testing rather than review:
 
 ### Known gaps
 
-- **Four tools have no engine**: PDF→Word, OCR, Sign, and Edit return the input
+- **Three tools have no engine**: PDF→Word, Sign, and Edit return the input
   unchanged, labelled as such in the UI.
+- **OCR ships English only.** The engine rejects any other language rather than
+  failing deep inside Tesseract; adding packs means editing both the Dockerfile
+  and `OCR_LANGUAGES`.
 - **No dead-letter queue yet.** Exhausted jobs are marked failed in Postgres and
   BullMQ keeps them for 24 hours, but nothing routes them anywhere for triage.
 - **Progress is coarse.** Engines report at a few checkpoints rather than

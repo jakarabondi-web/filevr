@@ -5,7 +5,9 @@ import { join } from "node:path";
 import zlib from "node:zlib";
 import { compressPdfEngine } from "./compress-pdf";
 import { mergePdfEngine } from "./merge-pdf";
-import { ghostscriptReportedFailure, pdfPageCount } from "./pdf-info";
+import { ocrPdfEngine } from "./ocr-pdf";
+import { ghostscriptReportedFailure, pdfHasText, pdfPageCount } from "./pdf-info";
+import { runCommand } from "./run-command";
 import { EngineError } from "./types";
 import type { EngineContext, EngineInput } from "./types";
 
@@ -182,4 +184,143 @@ describe("mergePdfEngine", () => {
     });
     await expect(mergePdfEngine.run([good, bad], ctx())).rejects.toThrow(/bad\.pdf/);
   });
+});
+
+/**
+ * Builds a PDF that is purely an image of text — the same thing a scanner
+ * produces. Rendering text through PostScript and then rasterising it destroys
+ * the text layer, so OCR has genuine work to do rather than reading a layer
+ * that was already there.
+ */
+async function buildScannedPdf(lines: string[]): Promise<string> {
+  const psPath = join(workDir, "source.ps");
+  const textPdf = join(workDir, "born-digital.pdf");
+  const scanPdf = join(workDir, `scan-${lines.length}-${Date.now()}.pdf`);
+
+  const ps = [
+    "/Helvetica findfont 22 scalefont setfont",
+    ...lines.map((line, i) => `72 ${700 - i * 34} moveto (${line.replace(/[()\\]/g, "")}) show`),
+    "showpage",
+  ].join("\n");
+  await writeFile(psPath, ps);
+
+  await runCommand("gs", ["-sDEVICE=pdfwrite", "-dNOPAUSE", "-dQUIET", "-dBATCH",
+    `-sOutputFile=${textPdf}`, psPath], { timeoutMs: 30_000 });
+  // pdfimage24 keeps only rendered pixels: no fonts, no text.
+  await runCommand("gs", ["-sDEVICE=pdfimage24", "-r200", "-dNOPAUSE", "-dQUIET", "-dBATCH",
+    `-sOutputFile=${scanPdf}`, textPdf], { timeoutMs: 30_000 });
+
+  return scanPdf;
+}
+
+describe("ocrPdfEngine", () => {
+  it("recovers text from a scan that has no text layer at all", async () => {
+    const scanPath = await buildScannedPdf(["INVOICE 2024-0487", "Acme Corporation", "Total Due 4340.00"]);
+    // Precondition: the input really is image-only.
+    expect(await pdfHasText(scanPath)).toBe(false);
+
+    const input: EngineInput = {
+      path: scanPath,
+      originalName: "scan.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: (await stat(scanPath)).size,
+    };
+
+    const [output] = await ocrPdfEngine.run([input], ctx({ timeoutMs: 120_000 }));
+
+    expect(await pdfHasText(output.path)).toBe(true);
+    const { stdout } = await runCommand("pdftotext", ["-q", output.path, "-"], { timeoutMs: 20_000 });
+    expect(stdout).toMatch(/INVOICE/i);
+    expect(stdout).toMatch(/Acme/i);
+    expect(stdout).toContain("4340.00");
+    expect(await pdfPageCount(output.path)).toBe(1);
+    expect(output.filename).toBe("scan-searchable.pdf");
+  }, 180_000);
+
+  it("leaves an existing text layer intact rather than re-recognising it", async () => {
+    // Born-digital text: --skip-text must pass it through untouched, since real
+    // text always beats OCR of a rendering of that text.
+    const psPath = join(workDir, "digital.ps");
+    const textPdf = join(workDir, "digital.pdf");
+    await writeFile(psPath, "/Helvetica findfont 22 scalefont setfont\n72 700 moveto (ORIGINAL SHARP TEXT) show\nshowpage");
+    await runCommand("gs", ["-sDEVICE=pdfwrite", "-dNOPAUSE", "-dQUIET", "-dBATCH",
+      `-sOutputFile=${textPdf}`, psPath], { timeoutMs: 30_000 });
+
+    const input: EngineInput = {
+      path: textPdf,
+      originalName: "digital.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: (await stat(textPdf)).size,
+    };
+
+    const [output] = await ocrPdfEngine.run([input], ctx({ timeoutMs: 120_000 }));
+
+    const { stdout } = await runCommand("pdftotext", ["-q", output.path, "-"], { timeoutMs: 20_000 });
+    expect(stdout).toContain("ORIGINAL SHARP TEXT");
+    expect(await pdfPageCount(output.path)).toBe(1);
+  }, 180_000);
+
+  it("still succeeds when one page has too little text for orientation detection", async () => {
+    // --rotate-pages runs Tesseract OSD, which errors on a page with too few
+    // characters. Real scans contain blank pages, dividers, and photos, so one
+    // such page must not fail the whole document: the engine falls back to a
+    // plain pass. This fixture is a readable scan followed by a picture.
+    const scanPath = await buildScannedPdf(["QUARTERLY REPORT", "Revenue 12500.00"]);
+    const pictureOnly = await writeInput("picture.pdf", buildPdf(1, 200));
+    const combined = join(workDir, "scan-plus-picture.pdf");
+    // qpdf exits 3 on warnings while still writing a valid file, and the
+    // synthetic fixture trips its stream-length checks; the merge engine
+    // handles the same case in production.
+    await runCommand("qpdf", ["--empty", "--pages", scanPath, pictureOnly.path, "--", combined], {
+      timeoutMs: 30_000,
+    }).catch(() => {});
+    expect((await stat(combined)).size).toBeGreaterThan(0);
+
+    const input: EngineInput = {
+      path: combined,
+      originalName: "mixed.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: (await stat(combined)).size,
+    };
+
+    const [output] = await ocrPdfEngine.run([input], ctx({ timeoutMs: 120_000 }));
+
+    expect(await pdfPageCount(output.path)).toBe(2);
+    const { stdout } = await runCommand("pdftotext", ["-q", output.path, "-"], { timeoutMs: 20_000 });
+    expect(stdout).toMatch(/QUARTERLY/i);
+  }, 180_000);
+
+  it("reports plainly when a document has no readable text at all", async () => {
+    // A picture with no writing in it. Returning an unchanged file labelled
+    // "searchable" would be a lie, so the engine fails with an explanation.
+    const input = await writeInput("no-text.pdf", buildPdf(1, 200));
+
+    await expect(ocrPdfEngine.run([input], ctx({ timeoutMs: 120_000 }))).rejects.toMatchObject({
+      code: "NO_TEXT_FOUND",
+      retryable: false,
+    });
+  }, 180_000);
+
+  it("refuses a damaged PDF", async () => {
+    const input = await writeInput("ocr-damaged.pdf", Buffer.from("%PDF-1.4\n" + "x".repeat(300)));
+    await expect(ocrPdfEngine.run([input], ctx())).rejects.toMatchObject({ code: "UNREADABLE_INPUT" });
+  }, 60_000);
+
+  it("falls back to English when an uninstalled language is requested", async () => {
+    const scanPath = await buildScannedPdf(["HELLO WORLD"]);
+    const input: EngineInput = {
+      path: scanPath,
+      originalName: "lang.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: (await stat(scanPath)).size,
+    };
+
+    // 'zzz' is not installed; the engine must not pass it to Tesseract.
+    const [output] = await ocrPdfEngine.run([input], ctx({
+      timeoutMs: 120_000,
+      configuration: { language: "zzz" },
+    }));
+
+    expect(await pdfHasText(output.path)).toBe(true);
+  }, 180_000);
 });

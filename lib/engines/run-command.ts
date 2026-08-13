@@ -4,7 +4,9 @@ export class CommandError extends Error {
   constructor(
     message: string,
     readonly code: "TIMEOUT" | "NONZERO_EXIT" | "OUTPUT_TOO_LARGE" | "SPAWN_FAILED",
-    readonly stderr?: string
+    readonly stderr?: string,
+    /** Process exit status, when the process ran and exited. */
+    readonly exitCode?: number
   ) {
     super(message);
     this.name = "CommandError";
@@ -70,7 +72,14 @@ export async function runCommand(
             reject(new CommandError(`${binary} produced too much output`, "OUTPUT_TOO_LARGE"));
             return;
           }
-          reject(new CommandError(`${binary} failed: ${error.message}`, "NONZERO_EXIT", String(stderr)));
+          reject(
+            new CommandError(
+              `${binary} failed: ${error.message}`,
+              "NONZERO_EXIT",
+              String(stderr),
+              typeof err.code === "number" ? err.code : undefined
+            )
+          );
           return;
         }
         resolve({ stdout: String(stdout), stderr: String(stderr) });
