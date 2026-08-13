@@ -1,14 +1,25 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { d, DROP, LAYER, SHEETS, STATEMENT } from "@/components/workbench/geometry";
 import { ConnectorLayer, StatementArrow } from "@/components/workbench/connector-layer";
 import { ContractPreview, InvoicePreview, ProposalPreview } from "@/components/workbench/document-sheets";
 import { DropControl } from "@/components/workbench/drop-control";
 import { WorkflowActionButton } from "@/components/workbench/workflow-action";
-import { WORKFLOW_ACTIONS, type WorkflowAction } from "@/components/workbench/data";
+import { FileQueue } from "@/components/workbench/file-queue";
+import { FREE_LIMITS } from "@/config/tools";
+import { formatBytes } from "@/lib/utils";
+import type { QueuedFile } from "@/types";
+import {
+  SUPPORTED_FORMATS_LABEL,
+  WORKFLOW_ACTIONS,
+  type WorkflowAction,
+} from "@/components/workbench/data";
+
+const LIMITS_CAPTION = `${SUPPORTED_FORMATS_LABEL} · up to ${formatBytes(
+  FREE_LIMITS.maxFileSizeBytes
+)} per file, ${FREE_LIMITS.filesPerTask} files per task`;
 
 const SHEET_CLASS = "absolute overflow-hidden border border-paper-line bg-paper-light";
 
@@ -77,6 +88,9 @@ interface DocumentWorkbenchProps {
   onSelectAction: (action: WorkflowAction) => void;
   onFilesDropped: (files: FileList) => void;
   error: string | null;
+  files: QueuedFile[];
+  onRemoveFile: (id: string) => void;
+  onRetryFile: (id: string) => void;
   scaled?: boolean;
 }
 
@@ -88,11 +102,13 @@ export function DocumentWorkbench({
   onSelectAction,
   onFilesDropped,
   error,
+  files,
+  onRemoveFile,
+  onRetryFile,
   scaled = false,
 }: DocumentWorkbenchProps) {
   const [dragActive, setDragActive] = useState(false);
   const depth = useRef(0);
-  const router = useRouter();
 
   const dropZone = {
     onDragEnter: (e: React.DragEvent) => {
@@ -121,14 +137,10 @@ export function DocumentWorkbench({
     <p
       role="alert"
       className={cn(
-        "rounded-lg border border-coral bg-coral/12 font-medium text-ink",
-        scaled ? "absolute" : "mt-4 px-4 py-2.5 text-sm"
+        "rounded-lg border border-coral bg-coral/15 font-medium text-ink",
+        scaled ? "shadow-[var(--shadow-paper)]" : "mt-4 px-4 py-2.5 text-sm"
       )}
-      style={
-        scaled
-          ? { left: d(STATEMENT.left), top: d(760), maxWidth: d(520), padding: `${d(12)} ${d(18)}`, fontSize: d(17), zIndex: LAYER.chrome }
-          : undefined
-      }
+      style={scaled ? { padding: `${d(10)} ${d(14)}`, fontSize: d(14) } : undefined}
     >
       {error}
     </p>
@@ -167,6 +179,10 @@ export function DocumentWorkbench({
             ))}
           </div>
           {errorNode}
+          <div className="mx-auto mt-4 max-w-md md:max-w-2xl">
+            <FileQueue files={files} onRemove={onRemoveFile} onRetry={onRetryFile} compact />
+            <p className="mt-3 text-center text-[11.5px] leading-snug text-ink/55">{LIMITS_CAPTION}</p>
+          </div>
         </div>
       </div>
     );
@@ -216,15 +232,32 @@ export function DocumentWorkbench({
           action={action}
           selected={selectedAction === action.slug}
           loading={loadingAction === action.slug}
-          onSelect={(a) => {
-            onSelectAction(a);
-            router.prefetch(`/task/${a.slug}`);
-          }}
+          onSelect={onSelectAction}
           scaled
         />
       ))}
 
-      {errorNode}
+      {/* Transient status floats over the lower paper stack, so the poster
+          composition stays intact until there is something to report. It is
+          bounded above the ribbon label so the two never collide. */}
+      {(files.length > 0 || error) && (
+        <div
+          className="absolute flex flex-col overflow-y-auto"
+          style={{
+            left: d(614),
+            top: d(556),
+            width: d(344),
+            maxHeight: d(226),
+            gap: d(8),
+            zIndex: LAYER.chrome,
+          }}
+        >
+          {errorNode}
+          <div className="rounded-xl shadow-[var(--shadow-paper)]">
+            <FileQueue files={files} onRemove={onRemoveFile} onRetry={onRetryFile} compact />
+          </div>
+        </div>
+      )}
     </>
   );
 }

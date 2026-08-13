@@ -42,3 +42,24 @@ describe("validateQueue", () => {
     expect(result.errorCode).toBe("TASK_LIMIT_EXCEEDED");
   });
 });
+
+describe("validateQueue — total size", () => {
+  it("rejects a batch whose combined size exceeds the free total", () => {
+    const result = validateQueue(0, [
+      { size: 300 * 1024 * 1024 },
+      { size: 300 * 1024 * 1024 },
+    ]);
+    expect(result.valid).toBe(false);
+    expect(result.errorCode).toBe("TOTAL_SIZE_EXCEEDED");
+  });
+
+  it("counts bytes already queued toward the total", () => {
+    const result = validateQueue(1, [{ size: 200 * 1024 * 1024 }], 400 * 1024 * 1024);
+    expect(result.valid).toBe(false);
+    expect(result.errorCode).toBe("TOTAL_SIZE_EXCEEDED");
+  });
+
+  it("accepts a batch inside both limits", () => {
+    expect(validateQueue(1, [{ size: 10 * 1024 * 1024 }], 20 * 1024 * 1024).valid).toBe(true);
+  });
+});

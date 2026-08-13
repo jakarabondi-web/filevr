@@ -5,7 +5,7 @@ import {
   initialUploadQueueState,
   uploadQueueReducer,
 } from "@/lib/upload/queue-reducer";
-import { validateFile, validateQueue } from "@/lib/validation/file";
+import { validateFile, validateQueue, type FileValidationResult } from "@/lib/validation/file";
 import type { QueuedFile } from "@/types";
 import { track } from "@/lib/analytics";
 
@@ -40,7 +40,8 @@ export function useUploadQueue() {
     (incoming: File[]) => {
       const limitCheck = validateQueue(
         state.files.length,
-        incoming.map((f) => ({ size: f.size }))
+        incoming.map((f) => ({ size: f.size })),
+        state.files.reduce((sum, f) => sum + f.size, 0)
       );
       if (!limitCheck.valid) {
         track("upload_failed", { reason: limitCheck.errorCode ?? "unknown" });
@@ -68,9 +69,22 @@ export function useUploadQueue() {
         else track("upload_failed", { reason: qf.errorCode ?? "unknown" });
       });
 
+      // Surface the first per-file rejection so the caller can show it inline.
+      const rejected = queued.find((qf) => qf.status === "error");
+      if (rejected) {
+        return {
+          valid: false,
+          errorCode: rejected.errorCode as FileValidationResult["errorCode"],
+          errorMessage:
+            queued.length > 1
+              ? `${rejected.name}: ${rejected.errorMessage}`
+              : rejected.errorMessage,
+        } satisfies FileValidationResult;
+      }
+
       return { valid: true } as const;
     },
-    [simulateUpload, state.files.length]
+    [simulateUpload, state.files]
   );
 
   const removeFile = useCallback((id: string) => {

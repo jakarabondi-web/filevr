@@ -17,7 +17,7 @@ import type { SessionUser } from "@/lib/auth";
 
 export function FilevrWorkbenchPage({ user }: { user: SessionUser | null }) {
   const router = useRouter();
-  const { files, addFiles, reset } = useUploadQueue();
+  const { files, addFiles, removeFile, retryFile, reset } = useUploadQueue();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
@@ -45,17 +45,38 @@ export function FilevrWorkbenchPage({ user }: { user: SessionUser | null }) {
   );
 
   const runAction = useCallback(
-    (action: WorkflowAction) => {
+    async (action: WorkflowAction) => {
       setSelectedAction(action.slug);
       setPaletteOpen(false);
-      if (files.length === 0) {
+
+      const ready = files.filter((f) => f.status !== "error");
+      if (ready.length === 0) {
         openPicker();
         return;
       }
+
+      // A job must exist before we can route: the task screen lives at
+      // /task/[tool]/[jobId], so create it first and navigate to the real id.
       setLoadingAction(action.slug);
-      router.push(`/task/${action.slug}`);
+      setError(null);
+      try {
+        const res = await fetch("/api/jobs", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "idempotency-key": `${action.slug}-${ready.map((f) => f.id).join("-")}`,
+          },
+          body: JSON.stringify({ toolSlug: action.slug, inputFileIds: ready.map((f) => f.id) }),
+        });
+        if (!res.ok) throw new Error(`Job creation failed (${res.status})`);
+        const { jobId } = (await res.json()) as { jobId: string };
+        router.push(`/task/${action.slug}/${jobId}`);
+      } catch {
+        setLoadingAction(null);
+        setError(`We couldn't start ${action.label}. Check your connection and try again.`);
+      }
     },
-    [files.length, openPicker, router]
+    [files, openPicker, router]
   );
 
   const handleNewWorkflow = useCallback(() => {
@@ -86,6 +107,9 @@ export function FilevrWorkbenchPage({ user }: { user: SessionUser | null }) {
     onSelectAction: runAction,
     onFilesDropped: acceptFiles,
     error,
+    files,
+    onRemoveFile: removeFile,
+    onRetryFile: retryFile,
   };
 
   return (
